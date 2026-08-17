@@ -1,7 +1,12 @@
 import {describe, expect, it} from 'vitest';
-import {moveIndex, toggleSelection, visibleRange} from '../src/navigation.js';
+import {moveIndex, toggleSelection, toggleSessionView, visibleRange} from '../src/navigation.js';
 
 describe('navigation', () => {
+  it('switches between active and archived session views', () => {
+    expect(toggleSessionView('active')).toBe('archived');
+    expect(toggleSessionView('archived')).toBe('active');
+  });
+
   it('keeps focus within a column', () => {
     expect(moveIndex(0, 3, -1)).toBe(0);
     expect(moveIndex(0, 3, 1)).toBe(1);

@@ -5,7 +5,7 @@ import {render} from 'ink';
 import {App} from './App.js';
 import {CodexAppServerClient} from './app-server-client.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 const HELP = `Manage Codex Sessions
 
@@ -15,12 +15,12 @@ Usage:
   mcs --version
 
 Keys:
-  ↑/↓       Move within the focused column
-  ←/→       Switch between active and archived sessions
+  ↑/↓       Move within the current session view
+  Tab       Switch between active and archived sessions
   Space     Select or unselect a session
   a         Archive selected active sessions
   d         Delete selected sessions
-  q, Esc    Quit
+  q         Quit
 
 Requirements:
   Node.js 20+

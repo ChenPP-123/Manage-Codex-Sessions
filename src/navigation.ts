@@ -1,4 +1,9 @@
 export type Direction = -1 | 1;
+export type SessionView = 'active' | 'archived';
+
+export function toggleSessionView(view: SessionView): SessionView {
+  return view === 'active' ? 'archived' : 'active';
+}
 
 export function moveIndex(current: number, length: number, direction: Direction): number {
   if (length === 0) {

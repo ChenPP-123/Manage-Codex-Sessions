@@ -1,11 +1,10 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Box, Text, useApp, useInput, useStdout} from 'ink';
 import {archiveSelected, deleteSelected, type BatchResult} from './session-actions.js';
-import {moveIndex, toggleSelection, visibleRange} from './navigation.js';
+import {moveIndex, toggleSelection, toggleSessionView, visibleRange, type SessionView} from './navigation.js';
 import type {Session, SessionService} from './types.js';
 
-type Column = 'active' | 'archived';
-type Focus = Record<Column, number>;
+type Focus = Record<SessionView, number>;
 type Notice = {kind: 'info' | 'success' | 'error'; text: string};
 
 type AppProps = {
@@ -23,14 +22,14 @@ export function App({service}: AppProps) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [focusedColumn, setFocusedColumn] = useState<Column>('active');
+  const [sessionView, setSessionView] = useState<SessionView>('active');
   const [focus, setFocus] = useState<Focus>({active: 0, archived: 0});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<Notice>({kind: 'info', text: '正在读取 Codex CLI 会话…'});
 
   const active = useMemo(() => sessions.filter(session => !session.archived), [sessions]);
   const archived = useMemo(() => sessions.filter(session => session.archived), [sessions]);
-  const byColumn: Record<Column, Session[]> = {active, archived};
+  const sessionsByView: Record<SessionView, Session[]> = {active, archived};
   const visibleCapacity = Math.max(1, Math.floor((terminalSize.rows - 10) / 2));
 
   useEffect(() => {
@@ -117,7 +116,7 @@ export function App({service}: AppProps) {
   }, [applyResult, selected, service, sessions]);
 
   useInput((input, key) => {
-    if (input === 'q' || key.escape) {
+    if (input === 'q') {
       exit();
       return;
     }
@@ -136,24 +135,20 @@ export function App({service}: AppProps) {
       return;
     }
 
-    if (key.leftArrow) {
-      setFocusedColumn('active');
-      return;
-    }
-    if (key.rightArrow) {
-      setFocusedColumn('archived');
+    if (key.tab) {
+      setSessionView(toggleSessionView);
       return;
     }
     if (key.upArrow || key.downArrow) {
       const direction = key.upArrow ? -1 : 1;
       setFocus(previous => ({
         ...previous,
-        [focusedColumn]: moveIndex(previous[focusedColumn], byColumn[focusedColumn].length, direction),
+        [sessionView]: moveIndex(previous[sessionView], sessionsByView[sessionView].length, direction),
       }));
       return;
     }
     if (input === ' ') {
-      const session = byColumn[focusedColumn][focus[focusedColumn]];
+      const session = sessionsByView[sessionView][focus[sessionView]];
       if (session) {
         setSelected(previous => toggleSelection(previous, session.id));
       }
@@ -184,20 +179,11 @@ export function App({service}: AppProps) {
           <Text color="yellow">终端宽度至少需要 {MIN_WIDTH} 列，当前为 {terminalSize.columns} 列。请扩大终端窗口。</Text>
         </Box>
       ) : (
-        <Box marginTop={1} gap={1}>
-          <SessionColumn
-            title="未归档"
-            sessions={active}
-            focused={focusedColumn === 'active'}
-            focusedIndex={focus.active}
-            selected={selected}
-            capacity={visibleCapacity}
-          />
-          <SessionColumn
-            title="已归档"
-            sessions={archived}
-            focused={focusedColumn === 'archived'}
-            focusedIndex={focus.archived}
+        <Box marginTop={1}>
+          <SessionList
+            title={sessionView === 'active' ? '未归档' : '已归档'}
+            sessions={sessionsByView[sessionView]}
+            focusedIndex={focus[sessionView]}
             selected={selected}
             capacity={visibleCapacity}
           />
@@ -216,35 +202,34 @@ export function App({service}: AppProps) {
         </Box>
       ) : (
         <Box marginTop={1}>
-          <Text dimColor>↑↓ 移动  ←→ 切列  Space 选择  a 归档  d 删除  q/Esc 退出</Text>
+          <Text dimColor>↑↓ 移动  Tab 切换未归档/已归档  Space 选择  a 归档  d 删除  q 退出</Text>
         </Box>
       )}
     </Box>
   );
 }
 
-type SessionColumnProps = {
+type SessionListProps = {
   title: string;
   sessions: Session[];
-  focused: boolean;
   focusedIndex: number;
   selected: ReadonlySet<string>;
   capacity: number;
 };
 
-function SessionColumn({title, sessions, focused, focusedIndex, selected, capacity}: SessionColumnProps) {
+function SessionList({title, sessions, focusedIndex, selected, capacity}: SessionListProps) {
   const [start, end] = visibleRange(sessions.length, focusedIndex, capacity);
   const visible = sessions.slice(start, end);
 
   return (
-    <Box width="50%" minHeight={5} flexDirection="column" borderStyle="round" borderColor={focused ? 'cyan' : 'gray'} paddingX={1}>
-      <Text bold color={focused ? 'cyan' : 'white'}>{title} ({sessions.length})</Text>
+    <Box width="100%" minHeight={5} flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+      <Text bold color="cyan">{title} ({sessions.length})</Text>
       {sessions.length === 0 ? (
         <Text dimColor>暂无会话</Text>
       ) : (
         visible.map((session, offset) => {
           const index = start + offset;
-          const isFocused = focused && index === focusedIndex;
+          const isFocused = index === focusedIndex;
           const isSelected = selected.has(session.id);
           return (
             <Box key={session.id} flexDirection="column" marginTop={offset === 0 ? 0 : 1}>
