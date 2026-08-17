@@ -1,0 +1,37 @@
+{
+  "name": "manage-codex-sessions",
+  "version": "0.1.0",
+  "description": "A terminal UI for managing Codex CLI sessions in batches.",
+  "type": "module",
+  "bin": {
+    "mcs": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "codex",
+    "cli",
+    "sessions",
+    "tui"
+  ],
+  "dependencies": {
+    "ink": "^6.3.1",
+    "react": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
