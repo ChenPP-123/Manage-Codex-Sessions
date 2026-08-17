@@ -31,6 +31,8 @@ Use Vitest and name files `*.test.ts`. Test protocol pagination, navigation boun
 
 The repository has no commit history yet. Use short, imperative Conventional Commit messages, for example `feat: add archived session column` or `fix: retain failed selections`.
 
+When the user approves committing and pushing changes, increment the release version before committing. Keep `package.json`, `package-lock.json`, and the `VERSION` constant in `src/cli.tsx` in sync; use semantic versioning to choose the appropriate increment.
+
 Pull requests should explain the user-visible change, list verification commands, and link relevant issues. Include a terminal screenshot for layout changes. Call out destructive-operation or Codex protocol changes explicitly.
 
 ## Security & Integration Notes

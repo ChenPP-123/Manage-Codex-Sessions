@@ -60,6 +60,16 @@ lines.on('line', line => {
     });
     return;
   }
+  if (message.method === 'thread/name/set') {
+    if (typeof message.params.name !== 'string') {
+      send({id: message.id, error: {code: -32602, message: 'missing name'}});
+    } else if (message.params.threadId.includes('fail')) {
+      send({id: message.id, error: {code: -32000, message: 'fixture failure'}});
+    } else {
+      send({id: message.id, result: {}});
+    }
+    return;
+  }
   if (message.method === 'thread/archive' || message.method === 'thread/delete') {
     if (message.params.threadId.includes('fail')) {
       send({id: message.id, error: {code: -32000, message: 'fixture failure'}});

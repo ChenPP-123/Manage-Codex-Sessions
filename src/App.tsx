@@ -6,6 +6,7 @@ import type {Session, SessionService} from './types.js';
 
 type Focus = Record<SessionView, number>;
 type Notice = {kind: 'info' | 'success' | 'error'; text: string};
+type RenameState = {session: Session; value: string};
 
 type AppProps = {
   service: SessionService;
@@ -22,6 +23,7 @@ export function App({service}: AppProps) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [renaming, setRenaming] = useState<RenameState | null>(null);
   const [sessionView, setSessionView] = useState<SessionView>('active');
   const [focus, setFocus] = useState<Focus>({active: 0, archived: 0});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -115,9 +117,44 @@ export function App({service}: AppProps) {
     setBusy(false);
   }, [applyResult, selected, service, sessions]);
 
+  const runRename = useCallback(async (session: Session, value: string) => {
+    const name = value.trim();
+    if (!name) {
+      setNotice({kind: 'error', text: '会话名称不能为空'});
+      return;
+    }
+
+    setRenaming(null);
+    setBusy(true);
+    setNotice({kind: 'info', text: `正在重命名“${session.title}”…`});
+    try {
+      await service.renameSession(session.id, name);
+      await loadSessions(false);
+      setNotice({kind: 'success', text: '会话已重命名'});
+    } catch (error) {
+      setNotice({kind: 'error', text: errorMessage(error)});
+    } finally {
+      setBusy(false);
+    }
+  }, [loadSessions, service]);
+
   useInput((input, key) => {
-    if (input === 'q') {
+    if (!renaming && input === 'q') {
       exit();
+      return;
+    }
+
+    if (renaming) {
+      if (key.escape) {
+        setRenaming(null);
+        setNotice({kind: 'info', text: '已取消重命名'});
+      } else if (key.return) {
+        void runRename(renaming.session, renaming.value);
+      } else if (key.backspace || key.delete) {
+        setRenaming(previous => previous ? {...previous, value: previous.value.slice(0, -1)} : null);
+      } else if (input) {
+        setRenaming(previous => previous ? {...previous, value: `${previous.value}${input}`} : null);
+      }
       return;
     }
 
@@ -151,6 +188,14 @@ export function App({service}: AppProps) {
       const session = sessionsByView[sessionView][focus[sessionView]];
       if (session) {
         setSelected(previous => toggleSelection(previous, session.id));
+      }
+      return;
+    }
+    if (input.toLowerCase() === 'r') {
+      const session = sessionsByView[sessionView][focus[sessionView]];
+      if (session) {
+        setRenaming({session, value: ''});
+        setNotice({kind: 'info', text: `输入“${session.title}”的新名称`});
       }
       return;
     }
@@ -194,7 +239,12 @@ export function App({service}: AppProps) {
         <Text color={noticeColor(notice.kind)}>{loading ? '加载中… ' : busy ? '处理中… ' : ''}{notice.text}</Text>
       </Box>
 
-      {confirmDelete ? (
+      {renaming ? (
+        <Box marginTop={1} borderStyle="round" borderColor="cyan" paddingX={1}>
+          <Text color="cyan">重命名会话：{renaming.value || ' '}</Text>
+          <Text dimColor>  Enter 确认  Esc 取消</Text>
+        </Box>
+      ) : confirmDelete ? (
         <Box marginTop={1} borderStyle="round" borderColor="red" paddingX={1}>
           <Text color="red" bold>
             永久删除 {selected.size} 个会话？派生子会话也可能被删除。按 y 确认，n 取消。
@@ -202,7 +252,7 @@ export function App({service}: AppProps) {
         </Box>
       ) : (
         <Box marginTop={1}>
-          <Text dimColor>↑↓ 移动  Tab 切换未归档/已归档  Space 选择  a 归档  d 删除  q 退出</Text>
+          <Text dimColor>↑↓ 移动  Tab 切换未归档/已归档  Space 选择  r 重命名  a 归档  d 删除  q 退出</Text>
         </Box>
       )}
     </Box>

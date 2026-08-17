@@ -9,6 +9,7 @@ export type Session = {
 
 export interface SessionService {
   listSessions(): Promise<Session[]>;
+  renameSession(id: string, name: string): Promise<void>;
   archiveSession(id: string): Promise<void>;
   deleteSession(id: string): Promise<void>;
 }

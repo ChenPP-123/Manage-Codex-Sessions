@@ -114,6 +114,10 @@ export class CodexAppServerClient implements SessionService {
     await this.request('thread/archive', {threadId: id});
   }
 
+  async renameSession(id: string, name: string): Promise<void> {
+    await this.request('thread/name/set', {threadId: id, name});
+  }
+
   async deleteSession(id: string): Promise<void> {
     await this.request('thread/delete', {threadId: id});
   }

@@ -43,6 +43,17 @@ describe('CodexAppServerClient', () => {
     }
   });
 
+  it('renames a session through the App Server', async () => {
+    const client = createClient();
+    try {
+      await client.start();
+      await expect(client.renameSession('active-1', 'Renamed session')).resolves.toBeUndefined();
+      await expect(client.renameSession('fail-session', 'Renamed session')).rejects.toThrow('fixture failure');
+    } finally {
+      client.close();
+    }
+  });
+
   it('fails clearly when the server returns malformed JSON', async () => {
     const client = createClient('malformed');
     try {
