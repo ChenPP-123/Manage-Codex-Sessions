@@ -16,6 +16,16 @@ export async function archiveSelected(
   return runSequentially(targets, skipped, session => service.archiveSession(session.id));
 }
 
+export async function unarchiveSelected(
+  service: SessionService,
+  sessions: readonly Session[],
+  selected: ReadonlySet<string>,
+): Promise<BatchResult> {
+  const targets = sessions.filter(session => selected.has(session.id) && session.archived);
+  const skipped = sessions.filter(session => selected.has(session.id) && !session.archived).map(session => session.id);
+  return runSequentially(targets, skipped, session => service.unarchiveSession(session.id));
+}
+
 export async function deleteSelected(
   service: SessionService,
   sessions: readonly Session[],

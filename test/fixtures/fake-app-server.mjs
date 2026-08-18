@@ -70,7 +70,7 @@ lines.on('line', line => {
     }
     return;
   }
-  if (message.method === 'thread/archive' || message.method === 'thread/delete') {
+  if (message.method === 'thread/archive' || message.method === 'thread/unarchive' || message.method === 'thread/delete') {
     if (message.params.threadId.includes('fail')) {
       send({id: message.id, error: {code: -32000, message: 'fixture failure'}});
     } else {
