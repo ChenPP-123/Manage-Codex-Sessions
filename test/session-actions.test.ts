@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {archiveSelected, deleteSelected} from '../src/session-actions.js';
+import {archiveSelected, deleteSelected, unarchiveSelected} from '../src/session-actions.js';
 import type {Session, SessionService} from '../src/types.js';
 
 const sessions: Session[] = [
@@ -14,6 +14,9 @@ function service(): SessionService {
     archiveSession: vi.fn(async id => {
       if (id === 'fail') throw new Error('archive failed');
     }),
+    unarchiveSession: vi.fn(async id => {
+      if (id === 'fail') throw new Error('unarchive failed');
+    }),
     deleteSession: vi.fn(async id => {
       if (id === 'fail') throw new Error('delete failed');
     }),
@@ -27,6 +30,14 @@ describe('session actions', () => {
     expect(target.archiveSession).toHaveBeenCalledTimes(1);
     expect(result.succeeded).toEqual(['active']);
     expect(result.skipped).toEqual(['archived']);
+  });
+
+  it('unarchives archived selections and skips active selections', async () => {
+    const target = service();
+    const result = await unarchiveSelected(target, sessions, new Set(['active', 'archived']));
+    expect(target.unarchiveSession).toHaveBeenCalledTimes(1);
+    expect(result.succeeded).toEqual(['archived']);
+    expect(result.skipped).toEqual(['active']);
   });
 
   it('continues after a failure and reports it by session', async () => {

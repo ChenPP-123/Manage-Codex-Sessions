@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Box, Text, useApp, useInput, useStdout} from 'ink';
-import {archiveSelected, deleteSelected, type BatchResult} from './session-actions.js';
+import {archiveSelected, deleteSelected, unarchiveSelected, type BatchResult} from './session-actions.js';
 import {moveIndex, toggleSelection, toggleSessionView, visibleRange, type SessionView} from './navigation.js';
 import type {Session, SessionService} from './types.js';
 
@@ -73,7 +73,7 @@ export function App({service}: AppProps) {
     void loadSessions(true);
   }, [loadSessions]);
 
-  const applyResult = useCallback(async (verb: string, result: BatchResult) => {
+  const applyResult = useCallback(async (verb: string, result: BatchResult, skippedDescription: string) => {
     setSelected(previous => {
       const next = new Set(previous);
       for (const id of result.succeeded) {
@@ -85,7 +85,7 @@ export function App({service}: AppProps) {
 
     const parts = [`${verb}成功 ${result.succeeded.length} 个`];
     if (result.skipped.length > 0) {
-      parts.push(`跳过 ${result.skipped.length} 个已归档会话`);
+      parts.push(`跳过 ${result.skipped.length} 个${skippedDescription}`);
     }
     if (result.failed.size > 0) {
       const firstError = result.failed.values().next().value as string | undefined;
@@ -104,16 +104,30 @@ export function App({service}: AppProps) {
     setBusy(true);
     setNotice({kind: 'info', text: `正在归档 ${archiveCount} 个会话…`});
     const result = await archiveSelected(service, sessions, selected);
-    await applyResult('归档', result);
+    await applyResult('归档', result, '已归档会话');
     setBusy(false);
   }, [active, applyResult, selected, service, sessions]);
+
+  const runUnarchive = useCallback(async () => {
+    const unarchiveCount = archived.filter(session => selected.has(session.id)).length;
+    if (unarchiveCount === 0) {
+      setNotice({kind: 'info', text: '没有选中的已归档会话'});
+      return;
+    }
+
+    setBusy(true);
+    setNotice({kind: 'info', text: `正在取消归档 ${unarchiveCount} 个会话…`});
+    const result = await unarchiveSelected(service, sessions, selected);
+    await applyResult('取消归档', result, '未归档会话');
+    setBusy(false);
+  }, [applyResult, archived, selected, service, sessions]);
 
   const runDelete = useCallback(async () => {
     setConfirmDelete(false);
     setBusy(true);
     setNotice({kind: 'info', text: `正在删除 ${selected.size} 个会话…`});
     const result = await deleteSelected(service, sessions, selected);
-    await applyResult('删除', result);
+    await applyResult('删除', result, '会话');
     setBusy(false);
   }, [applyResult, selected, service, sessions]);
 
@@ -191,7 +205,7 @@ export function App({service}: AppProps) {
       }
       return;
     }
-    if (input.toLowerCase() === 'r') {
+    if (input.toLowerCase() === 'r' && sessionView === 'active') {
       const session = sessionsByView[sessionView][focus[sessionView]];
       if (session) {
         setRenaming({session, value: ''});
@@ -199,8 +213,12 @@ export function App({service}: AppProps) {
       }
       return;
     }
-    if (input.toLowerCase() === 'a') {
+    if (input.toLowerCase() === 'a' && sessionView === 'active') {
       void runArchive();
+      return;
+    }
+    if (input.toLowerCase() === 'u' && sessionView === 'archived') {
+      void runUnarchive();
       return;
     }
     if (input.toLowerCase() === 'd') {
@@ -252,7 +270,9 @@ export function App({service}: AppProps) {
         </Box>
       ) : (
         <Box marginTop={1}>
-          <Text dimColor>↑↓ 移动  Tab 切换未归档/已归档  Space 选择  r 重命名  a 归档  d 删除  q 退出</Text>
+          <Text dimColor>
+            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择  {sessionView === 'active' ? 'r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
+          </Text>
         </Box>
       )}
     </Box>

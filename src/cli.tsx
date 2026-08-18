@@ -5,7 +5,7 @@ import {render} from 'ink';
 import {App} from './App.js';
 import {CodexAppServerClient} from './app-server-client.js';
 
-const VERSION = '0.1.2';
+const VERSION = '0.2.0';
 
 const HELP = `Manage Codex Sessions
 
@@ -18,8 +18,9 @@ Keys:
   ↑/↓       Move within the current session view
   Tab       Switch between active and archived sessions
   Space     Select or unselect a session
-  r         Rename the focused session
+  r         Rename the focused active session
   a         Archive selected active sessions
+  u         Unarchive selected archived sessions
   d         Delete selected sessions
   q         Quit
 

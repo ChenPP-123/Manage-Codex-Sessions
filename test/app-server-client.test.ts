@@ -54,6 +54,16 @@ describe('CodexAppServerClient', () => {
     }
   });
 
+  it('unarchives a session through the App Server', async () => {
+    const client = createClient();
+    try {
+      await client.start();
+      await expect(client.unarchiveSession('archived-1')).resolves.toBeUndefined();
+    } finally {
+      client.close();
+    }
+  });
+
   it('fails clearly when the server returns malformed JSON', async () => {
     const client = createClient('malformed');
     try {
