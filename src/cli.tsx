@@ -4,10 +4,8 @@ import React from 'react';
 import {render} from 'ink';
 import {App} from './App.js';
 import {CodexAppServerClient} from './app-server-client.js';
-import {resumeCodexSession} from './codex-session.js';
-import type {Session} from './types.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.2.0';
 
 const HELP = `Manage Codex Sessions
 
@@ -20,7 +18,6 @@ Keys:
   ↑/↓       Move within the current session view
   Tab       Switch between active and archived sessions
   Space     Select or unselect a session
-  g         Enter the focused active session
   r         Rename the focused active session
   a         Archive selected active sessions
   u         Unarchive selected archived sessions
@@ -54,12 +51,9 @@ async function main(): Promise<void> {
   }
 
   const client = new CodexAppServerClient();
-  let sessionToResume: Session | null = null;
   try {
     await client.start();
-    const instance = render(<App service={client} onOpenSession={session => {
-      sessionToResume = session;
-    }} />);
+    const instance = render(<App service={client} />);
     await instance.waitUntilExit();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -67,16 +61,6 @@ async function main(): Promise<void> {
     process.exitCode = 1;
   } finally {
     client.close();
-  }
-
-  if (sessionToResume) {
-    try {
-      process.exitCode = await resumeCodexSession(sessionToResume);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`${message}\n`);
-      process.exitCode = 1;
-    }
   }
 }
 

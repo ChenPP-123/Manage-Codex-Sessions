@@ -10,13 +10,12 @@ type RenameState = {session: Session; value: string};
 
 type AppProps = {
   service: SessionService;
-  onOpenSession: (session: Session) => void;
 };
 
 const MIN_WIDTH = 80;
 const DEFAULT_ROWS = 24;
 
-export function App({service, onOpenSession}: AppProps) {
+export function App({service}: AppProps) {
   const {exit} = useApp();
   const {stdout} = useStdout();
   const [terminalSize, setTerminalSize] = useState({columns: stdout.columns ?? 80, rows: stdout.rows ?? DEFAULT_ROWS});
@@ -206,22 +205,6 @@ export function App({service, onOpenSession}: AppProps) {
       }
       return;
     }
-    if (input.toLowerCase() === 'g') {
-      if (sessionView === 'archived') {
-        setNotice({kind: 'info', text: '请先选择会话并按 u 取消归档'});
-        return;
-      }
-
-      const session = sessionsByView.active[focus.active];
-      if (!session) {
-        setNotice({kind: 'info', text: '当前没有可进入的未归档会话'});
-        return;
-      }
-
-      onOpenSession(session);
-      exit();
-      return;
-    }
     if (input.toLowerCase() === 'r' && sessionView === 'active') {
       const session = sessionsByView[sessionView][focus[sessionView]];
       if (session) {
@@ -288,7 +271,7 @@ export function App({service, onOpenSession}: AppProps) {
       ) : (
         <Box marginTop={1}>
           <Text dimColor>
-            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择  {sessionView === 'active' ? 'g 进入  r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
+            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择  {sessionView === 'active' ? 'r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
           </Text>
         </Box>
       )}
