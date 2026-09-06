@@ -202,6 +202,10 @@ export function App({service}: AppProps) {
       const session = sessionsByView[sessionView][focus[sessionView]];
       if (session) {
         setSelected(previous => toggleSelection(previous, session.id));
+        setFocus(previous => ({
+          ...previous,
+          [sessionView]: moveIndex(previous[sessionView], sessionsByView[sessionView].length, 1),
+        }));
       }
       return;
     }
@@ -271,7 +275,7 @@ export function App({service}: AppProps) {
       ) : (
         <Box marginTop={1}>
           <Text dimColor>
-            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择  {sessionView === 'active' ? 'r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
+            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择并下移  {sessionView === 'active' ? 'r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
           </Text>
         </Box>
       )}

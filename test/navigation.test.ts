@@ -14,6 +14,11 @@ describe('navigation', () => {
     expect(moveIndex(3, 0, -1)).toBe(0);
   });
 
+  it('moves focus down after selecting without passing the final row', () => {
+    expect(moveIndex(0, 2, 1)).toBe(1);
+    expect(moveIndex(1, 2, 1)).toBe(1);
+  });
+
   it('keeps the focused row inside the visible window', () => {
     expect(visibleRange(10, 0, 4)).toEqual([0, 4]);
     expect(visibleRange(10, 5, 4)).toEqual([3, 7]);
