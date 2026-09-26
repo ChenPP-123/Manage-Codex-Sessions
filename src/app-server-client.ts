@@ -153,7 +153,9 @@ export class CodexAppServerClient implements SessionService {
         limit: 100,
         sortKey: 'updated_at',
         sortDirection: 'desc',
-        sourceKinds: ['cli'],
+        // Include non-CLI interactive sources; exclude exec and subagent sessions.
+        sourceKinds: ['cli', 'vscode', 'appServer'],
+        modelProviders: [],
       });
       sessions.push(...page.data.map((thread: CodexThread) => this.toSession(thread, archived)));
       cursor = page.nextCursor ?? null;

@@ -14,7 +14,7 @@ function createClient(mode?: string, timeoutMs = 1_000) {
 }
 
 describe('CodexAppServerClient', () => {
-  it('loads every active and archived CLI page and maps display fields', async () => {
+  it('loads every active and archived page and maps display fields', async () => {
     const client = createClient();
     try {
       await client.start();
@@ -28,6 +28,24 @@ describe('CodexAppServerClient', () => {
       });
       expect(sessions[1]).toMatchObject({title: '未命名会话', branch: null});
       expect(sessions[2]).toMatchObject({id: 'archived-1', title: 'Archived session', archived: true});
+    } finally {
+      client.close();
+    }
+  });
+
+  it('includes CLI, editor and App Server sessions across providers and pages', async () => {
+    const client = createClient('mixed-sources');
+    try {
+      await client.start();
+      const sessions = await client.listSessions();
+      expect(sessions.map(session => ({id: session.id, archived: session.archived}))).toEqual([
+        {id: 'active-cli', archived: false},
+        {id: 'active-vscode', archived: false},
+        {id: 'active-appServer', archived: false},
+        {id: 'archived-cli', archived: true},
+        {id: 'archived-vscode', archived: true},
+        {id: 'archived-appServer', archived: true},
+      ]);
     } finally {
       client.close();
     }

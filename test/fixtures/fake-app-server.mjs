@@ -35,9 +35,25 @@ lines.on('line', line => {
     return;
   }
   if (message.method === 'thread/list') {
-    const {archived, cursor, sourceKinds, sortKey, sortDirection} = message.params;
-    if (JSON.stringify(sourceKinds) !== '["cli"]' || sortKey !== 'updated_at' || sortDirection !== 'desc') {
+    const {archived, cursor, sourceKinds, modelProviders, sortKey, sortDirection} = message.params;
+    if (sortKey !== 'updated_at' || sortDirection !== 'desc') {
       send({id: message.id, error: {code: -32602, message: 'unexpected filters'}});
+      return;
+    }
+    if (process.env.FAKE_MODE === 'mixed-sources') {
+      const prefix = archived ? 'archived' : 'active';
+      const threads = ['cli', 'vscode', 'appServer', 'exec', 'subAgent'].map(source =>
+        thread(`${prefix}-${source}`, {source, modelProvider: source === 'cli' ? 'openai' : 'custom'}),
+      );
+      const filtered = threads.filter(item =>
+        (sourceKinds?.length ? sourceKinds : ['cli', 'vscode']).includes(item.source)
+        && (modelProviders?.length === 0 || (modelProviders ?? ['openai']).includes(item.modelProvider)),
+      );
+      const offset = Number(cursor ?? 0);
+      send({id: message.id, result: {
+        data: filtered.slice(offset, offset + 1),
+        nextCursor: offset + 1 < filtered.length ? String(offset + 1) : null,
+      }});
       return;
     }
     if (cursor === null) {

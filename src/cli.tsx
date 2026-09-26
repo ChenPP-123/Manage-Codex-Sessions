@@ -5,7 +5,7 @@ import {render} from 'ink';
 import {App} from './App.js';
 import {CodexAppServerClient} from './app-server-client.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 
 const HELP = `Manage Codex Sessions
 

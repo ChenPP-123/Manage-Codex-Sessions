@@ -27,7 +27,7 @@ export function App({service}: AppProps) {
   const [sessionView, setSessionView] = useState<SessionView>('active');
   const [focus, setFocus] = useState<Focus>({active: 0, archived: 0});
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState<Notice>({kind: 'info', text: '正在读取 Codex CLI 会话…'});
+  const [notice, setNotice] = useState<Notice>({kind: 'info', text: '正在读取 Codex 会话…'});
 
   const active = useMemo(() => sessions.filter(session => !session.archived), [sessions]);
   const archived = useMemo(() => sessions.filter(session => session.archived), [sessions]);
@@ -72,7 +72,7 @@ export function App({service}: AppProps) {
         archived: Math.min(previous.archived, Math.max(0, loaded.filter(session => session.archived).length - 1)),
       }));
       if (initial) {
-        setNotice({kind: 'info', text: `已加载 ${loaded.length} 个 Codex CLI 会话`});
+        setNotice({kind: 'info', text: `已加载 ${loaded.length} 个 Codex 会话`});
       }
     } catch (error) {
       setNotice({kind: 'error', text: errorMessage(error)});
