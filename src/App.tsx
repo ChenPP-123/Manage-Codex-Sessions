@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
-import {Box, Text, useApp, useInput, useStdout} from 'ink';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Box, Text, useApp, useInput, useStdout, measureElement, type DOMElement} from 'ink';
 import {archiveSelected, deleteSelected, unarchiveSelected, type BatchResult} from './session-actions.js';
 import {moveIndex, toggleSelection, toggleSessionView, visibleRange, type SessionView} from './navigation.js';
 import type {Session, SessionService} from './types.js';
@@ -12,7 +12,7 @@ type AppProps = {
   service: SessionService;
 };
 
-const MIN_WIDTH = 80;
+const COMPACT_WIDTH = 80;
 const DEFAULT_ROWS = 24;
 
 export function App({service}: AppProps) {
@@ -32,7 +32,21 @@ export function App({service}: AppProps) {
   const active = useMemo(() => sessions.filter(session => !session.archived), [sessions]);
   const archived = useMemo(() => sessions.filter(session => session.archived), [sessions]);
   const sessionsByView: Record<SessionView, Session[]> = {active, archived};
-  const visibleCapacity = Math.max(1, Math.floor((terminalSize.rows - 10) / 2));
+  const compact = terminalSize.columns < COMPACT_WIDTH;
+  const headerRef = useRef<DOMElement>(null);
+  const footerRef = useRef<DOMElement>(null);
+  const [headerFooterHeight, setHeaderFooterHeight] = useState(12);
+  // Reserve the list margin, borders, heading and range indicator. Wide entries
+  // occupy two lines plus a gap, except for the first entry's missing gap.
+  const listRows = terminalSize.rows - headerFooterHeight - 5;
+  const visibleCapacity = Math.max(1, compact ? listRows : Math.floor((listRows + 1) / 3));
+  const focusedSession = sessionsByView[sessionView][focus[sessionView]];
+
+  useEffect(() => {
+    if (headerRef.current && footerRef.current) {
+      setHeaderFooterHeight(measureElement(headerRef.current).height + measureElement(footerRef.current).height);
+    }
+  });
 
   useEffect(() => {
     const onResize = () => setTerminalSize({columns: stdout.columns ?? 80, rows: stdout.rows ?? DEFAULT_ROWS});
@@ -235,50 +249,61 @@ export function App({service}: AppProps) {
   });
 
   return (
-    <Box flexDirection="column">
-      <Box justifyContent="space-between">
-        <Text bold color="cyan">Manage Codex Sessions</Text>
+    <Box flexDirection="column" width={terminalSize.columns}>
+      <Box ref={headerRef} justifyContent="space-between">
+        <Text bold color="cyan">{compact ? 'MCS' : 'Manage Codex Sessions'}</Text>
         <Text dimColor>已选择 {selected.size}</Text>
       </Box>
 
-      {terminalSize.columns < MIN_WIDTH ? (
-        <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1}>
-          <Text color="yellow">终端宽度至少需要 {MIN_WIDTH} 列，当前为 {terminalSize.columns} 列。请扩大终端窗口。</Text>
-        </Box>
-      ) : (
-        <Box marginTop={1}>
-          <SessionList
-            title={sessionView === 'active' ? '未归档' : '已归档'}
-            sessions={sessionsByView[sessionView]}
-            focusedIndex={focus[sessionView]}
-            selected={selected}
-            capacity={visibleCapacity}
-          />
-        </Box>
-      )}
-
       <Box marginTop={1}>
-        <Text color={noticeColor(notice.kind)}>{loading ? '加载中… ' : busy ? '处理中… ' : ''}{notice.text}</Text>
+        <SessionList
+          title={sessionView === 'active' ? '未归档' : '已归档'}
+          sessions={sessionsByView[sessionView]}
+          focusedIndex={focus[sessionView]}
+          selected={selected}
+          capacity={visibleCapacity}
+          compact={compact}
+        />
       </Box>
 
-      {renaming ? (
-        <Box marginTop={1} borderStyle="round" borderColor="cyan" paddingX={1}>
-          <Text color="cyan">重命名会话：{renaming.value || ' '}</Text>
-          <Text dimColor>  Enter 确认  Esc 取消</Text>
-        </Box>
-      ) : confirmDelete ? (
-        <Box marginTop={1} borderStyle="round" borderColor="red" paddingX={1}>
-          <Text color="red" bold>
-            永久删除 {selected.size} 个会话？派生子会话也可能被删除。按 y 确认，n 取消。
-          </Text>
-        </Box>
-      ) : (
+      <Box ref={footerRef} flexDirection="column">
+        {compact ? (
+          <Box marginTop={1} flexDirection="column">
+            <Text dimColor wrap="truncate-middle">目录：{focusedSession ? displayPath(focusedSession.projectPath) : '—'}</Text>
+            <Text color="yellow" wrap="truncate-end">分支：{focusedSession?.branch ?? '—'}</Text>
+          </Box>
+        ) : null}
         <Box marginTop={1}>
-          <Text dimColor>
-            ↑↓ 移动  Tab 切换未归档/已归档  Space 选择并下移  {sessionView === 'active' ? 'r 重命名  a 归档' : 'u 取消归档'}  d 删除  q 退出
-          </Text>
+          <Text color={noticeColor(notice.kind)}>{loading ? '加载中… ' : busy ? '处理中… ' : ''}{notice.text}</Text>
         </Box>
-      )}
+
+        {renaming ? (
+          <Box marginTop={1} flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+            <Text color="cyan">重命名会话：</Text>
+            <Text color="cyan" wrap="truncate-start">{renaming.value || ' '}</Text>
+            <Text dimColor>Enter 确认  Esc 取消</Text>
+          </Box>
+        ) : confirmDelete ? (
+          <Box marginTop={1} borderStyle="round" borderColor="red" paddingX={1}>
+            <Text color="red" bold>
+              永久删除 {selected.size} 个会话？派生子会话也可能被删除。按 y 确认，n 取消。
+            </Text>
+          </Box>
+        ) : (
+          <Box marginTop={1} flexWrap="wrap" columnGap={2}>
+            {[
+              '↑↓ 移动',
+              compact ? 'Tab 切换视图' : 'Tab 切换未归档/已归档',
+              'Space 选择并下移',
+              ...(sessionView === 'active' ? ['r 重命名', 'a 归档'] : ['u 取消归档']),
+              'd 删除',
+              'q 退出',
+            ].map(hint => (
+              <Box key={hint} flexShrink={0}><Text dimColor>{hint}</Text></Box>
+            ))}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
@@ -289,15 +314,16 @@ type SessionListProps = {
   focusedIndex: number;
   selected: ReadonlySet<string>;
   capacity: number;
+  compact: boolean;
 };
 
-function SessionList({title, sessions, focusedIndex, selected, capacity}: SessionListProps) {
+function SessionList({title, sessions, focusedIndex, selected, capacity, compact}: SessionListProps) {
   const [start, end] = visibleRange(sessions.length, focusedIndex, capacity);
   const visible = sessions.slice(start, end);
 
   return (
-    <Box width="100%" minHeight={5} flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text bold color="cyan">{title} ({sessions.length})</Text>
+    <Box width="100%" flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+      <Text bold color="cyan" wrap="truncate-end">{title} ({sessions.length})</Text>
       {sessions.length === 0 ? (
         <Text dimColor>暂无会话</Text>
       ) : (
@@ -306,19 +332,21 @@ function SessionList({title, sessions, focusedIndex, selected, capacity}: Sessio
           const isFocused = index === focusedIndex;
           const isSelected = selected.has(session.id);
           return (
-            <Box key={session.id} flexDirection="column" marginTop={offset === 0 ? 0 : 1}>
+            <Box key={session.id} flexDirection="column" marginTop={compact || offset === 0 ? 0 : 1}>
               <Text color={isFocused ? 'cyan' : isSelected ? 'green' : 'white'} bold={isFocused} wrap="truncate-end">
                 {isFocused ? '▶' : ' '} [{isSelected ? 'x' : ' '}] {session.title}
               </Text>
-              <Text dimColor wrap="truncate-middle">
-                {displayPath(session.projectPath)}  <Text color="yellow"> {session.branch ?? '—'}</Text>
-              </Text>
+              {compact ? null : (
+                <Text dimColor wrap="truncate-middle">
+                  {displayPath(session.projectPath)}  <Text color="yellow"> {session.branch ?? '—'}</Text>
+                </Text>
+              )}
             </Box>
           );
         })
       )}
       {sessions.length > visible.length ? (
-        <Text dimColor>{start + 1}–{end} / {sessions.length}</Text>
+        <Text dimColor wrap="truncate-end">{start + 1}–{end} / {sessions.length}</Text>
       ) : null}
     </Box>
   );
